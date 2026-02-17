@@ -44,3 +44,6 @@ next-env.d.ts
 # bun (backend)
 .bun
 *.bun.lock
+
+# supabase migrations
+supabase/migrations

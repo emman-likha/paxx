@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Shield, Mail, Lock, User, Check, X } from "lucide-react"
+import { Shield, Mail, Lock, User, Check, X, Eye, EyeOff } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,9 @@ export function UnifiedAuthForm({
     const [localError, setLocalError] = useState<string | null>(null)
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
     const [checkingUsername, setCheckingUsername] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null)
     const [passwordValidation, setPasswordValidation] = useState(validatePasswordStrength(""))
 
     // Check username availability with debounce
@@ -79,6 +82,15 @@ export function UnifiedAuthForm({
             setPasswordValidation(validatePasswordStrength(password))
         }
     }, [password, mode])
+
+    // Check if passwords match
+    useEffect(() => {
+        if (mode === "signup" && confirmPassword.length > 0) {
+            setPasswordsMatch(password === confirmPassword)
+        } else {
+            setPasswordsMatch(null)
+        }
+    }, [password, confirmPassword, mode])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -234,7 +246,7 @@ export function UnifiedAuthForm({
                                                 disabled={isLoading}
                                                 required
                                             />
-                                            {username.length >= 3 && (
+                                            {(checkingUsername || usernameAvailable !== null) && (
                                                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                                     {checkingUsername ? (
                                                         <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -294,14 +306,26 @@ export function UnifiedAuthForm({
                                 <Lock className="absolute left-3 top-1/2 flex size-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     id="password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className="pl-10 h-11 bg-muted/50 focus:bg-background transition-all"
+                                    className="pl-10 pr-10 h-11 bg-muted/50 focus:bg-background transition-all"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     disabled={isLoading}
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="size-4" />
+                                    ) : (
+                                        <Eye className="size-4" />
+                                    )}
+                                </button>
                             </div>
                         </div>
 
@@ -351,15 +375,37 @@ export function UnifiedAuthForm({
                                             <Lock className="absolute left-3 top-1/2 flex size-4 -translate-y-1/2 text-muted-foreground" />
                                             <Input
                                                 id="confirm-password"
-                                                type="password"
+                                                type={showConfirmPassword ? "text" : "password"}
                                                 placeholder="••••••••"
-                                                className="pl-10 h-11 bg-muted/50 focus:bg-background transition-all"
+                                                className="pl-10 pr-10 h-11 bg-muted/50 focus:bg-background transition-all"
                                                 value={confirmPassword}
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                                 disabled={isLoading}
                                                 required
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                                tabIndex={-1}
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff className="size-4" />
+                                                ) : (
+                                                    <Eye className="size-4" />
+                                                )}
+                                            </button>
                                         </div>
+                                        {/* Password Match Feedback */}
+                                        {confirmPassword.length > 0 && (
+                                            <p className="text-[11px]">
+                                                {passwordsMatch ? (
+                                                    <span className="text-green-600 dark:text-green-400 font-medium">✓ Passwords match</span>
+                                                ) : (
+                                                    <span className="text-red-600 dark:text-red-400 font-medium">✗ Passwords do not match</span>
+                                                )}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Zero-Knowledge Warning */}

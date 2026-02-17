@@ -69,19 +69,14 @@ export function useAuth() {
             if (signUpError) throw signUpError;
             if (!data.user) throw new Error('Sign up failed');
 
-            // 7. Create the public profile with the salt and username
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: data.user.id,
-                    email: email,
-                    username: username,
-                    master_password_salt: saltBase64,
-                });
-
-            if (profileError) throw profileError;
-
-            router.push('/login?message=Account created successfully');
+            // Redirect to verification page with email, username, and salt
+            // The profile will be updated AFTER email verification when user is authenticated
+            const params = new URLSearchParams({
+                email: email,
+                username: username,
+                salt: saltBase64,
+            });
+            router.push(`/verify-email?${params.toString()}`);
         } catch (err: any) {
             setError(err.message || 'An error occurred during sign up');
         } finally {
@@ -144,6 +139,27 @@ export function useAuth() {
         }
     };
 
+    const verifyEmailWithCode = async (email: string, token: string) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token,
+                type: 'signup'
+            });
+
+            if (error) throw error;
+            return data;
+        } catch (err: any) {
+            setError(err.message || 'Verification failed');
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
         router.push('/');
@@ -154,6 +170,7 @@ export function useAuth() {
         signIn,
         signOut,
         checkUsernameAvailability,
+        verifyEmailWithCode,
         isLoading,
         error
     };
