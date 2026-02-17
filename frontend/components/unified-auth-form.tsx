@@ -48,10 +48,14 @@ export function UnifiedAuthForm({
     // Check username availability with debounce
     useEffect(() => {
         if (mode === "signup" && username.length >= 3) {
+            // Reset availability state when username changes (while typing)
+            setUsernameAvailable(null)
+            setCheckingUsername(false)
+
             // Validate username format first
             const validation = validateUsername(username)
             if (!validation.isValid) {
-                setUsernameAvailable(false)
+                // Don't set to false - keep it null so format rules show
                 return
             }
 
@@ -67,7 +71,7 @@ export function UnifiedAuthForm({
             setUsernameAvailable(null)
             setCheckingUsername(false)
         }
-    }, [username, mode, checkUsernameAvailability])
+    }, [username, mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Validate password in real-time
     useEffect(() => {
@@ -243,7 +247,15 @@ export function UnifiedAuthForm({
                                             )}
                                         </div>
                                         <p className="text-[11px] text-muted-foreground">
-                                            3-20 characters, letters, numbers, underscore, or hyphen
+                                            {checkingUsername ? (
+                                                "Checking availability..."
+                                            ) : usernameAvailable === true ? (
+                                                <span className="text-green-600 dark:text-green-400 font-medium">✓ Username is available</span>
+                                            ) : usernameAvailable === false ? (
+                                                <span className="text-red-600 dark:text-red-400 font-medium">✗ Username is taken. Choose another</span>
+                                            ) : (
+                                                "3-20 characters, letters, numbers, underscore, or hyphen"
+                                            )}
                                         </p>
                                     </div>
 

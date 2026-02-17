@@ -19,8 +19,13 @@ export function useAuth() {
 
             if (error) throw error;
             return !data; // Available if no data found
-        } catch (err) {
-            console.error('Error checking username:', err);
+        } catch (err: any) {
+            console.error('Error checking username:', {
+                message: err?.message || 'Unknown error',
+                code: err?.code,
+                details: err?.details,
+                username: username, // Safe to log, not sensitive
+            });
             return false;
         }
     };
