@@ -120,12 +120,17 @@
     scroll-behavior: smooth !important;
   }
 
-  * {
-    @apply border-border outline-ring/50;
-  }
-
   body {
     @apply bg-background text-foreground;
     scroll-behavior: smooth !important;
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+  }
+
+  /* Target all primary containers and interactive elements for a unified fade */
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+    transition: background-color 0.5s ease-in-out, border-color 0.5s ease-in-out, color 0.5s ease-in-out, text-decoration-color 0.5s ease-in-out, fill 0.5s ease-in-out, stroke 0.5s ease-in-out;
   }
 }

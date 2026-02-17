@@ -1,3 +1,5 @@
+"use client"
+
 import { Shield } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -11,13 +13,26 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
+import { useState } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const { signIn, isLoading, error } = useAuth()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await signIn(email, password)
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <form>
+      <form onSubmit={handleSubmit}>
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
             <a
@@ -34,13 +49,23 @@ export function LoginForm({
               Don&apos;t have an account? <a href="/signup" className="font-medium text-primary hover:underline">Sign up</a>
             </FieldDescription>
           </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
             />
           </Field>
           <Field>
@@ -49,11 +74,16 @@ export function LoginForm({
               id="password"
               type="password"
               placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
             />
           </Field>
           <Field>
-            <Button type="submit" className="w-full">Login</Button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Login"}
+            </Button>
           </Field>
         </FieldGroup>
       </form>

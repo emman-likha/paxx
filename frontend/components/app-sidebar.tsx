@@ -10,6 +10,8 @@ import {
     User,
     LogOut,
     Shield,
+    Users,
+    LayoutDashboard,
 } from "lucide-react"
 
 import {
@@ -25,6 +27,8 @@ import {
     SidebarMenuItem,
     SidebarRail,
 } from "@/components/ui/sidebar"
+import { useQuery } from "@tanstack/react-query"
+import { supabase } from "@/lib/supabase"
 
 // Menu items for Paxx password manager
 const mainItems = [
@@ -50,6 +54,19 @@ const mainItems = [
     },
 ]
 
+const adminItems = [
+    {
+        title: "User Management",
+        url: "/dashboard/admin/users",
+        icon: Users,
+    },
+    {
+        title: "System Logs",
+        url: "/dashboard/admin/logs",
+        icon: LayoutDashboard,
+    },
+]
+
 const settingsItems = [
     {
         title: "Settings",
@@ -64,6 +81,22 @@ const settingsItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const { data: profile } = useQuery({
+        queryKey: ["profile"],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+            const { data } = await supabase
+                .from("profiles")
+                .select("is_admin")
+                .eq("id", user.id)
+                .single()
+            return data
+        },
+    })
+
+    const isAdmin = profile?.is_admin
+
     return (
         <Sidebar collapsible="icon" {...props}>
             <SidebarHeader>
@@ -101,6 +134,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+
+                {isAdmin && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {adminItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild>
+                                            <a href={item.url}>
+                                                <item.icon />
+                                                <span>{item.title}</span>
+                                            </a>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
                 <SidebarGroup>
                     <SidebarGroupLabel>Account</SidebarGroupLabel>
                     <SidebarGroupContent>
