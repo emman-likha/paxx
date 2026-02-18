@@ -30,7 +30,7 @@ export default function VerifyEmailPage() {
 
         try {
             // 1. Verify the email with OTP code
-            const { data } = await verifyEmailWithCode(email, code)
+            const data = await verifyEmailWithCode(email, code)
 
             // 2. Now that user is authenticated, update their profile with username and salt
             if (data?.user && username && salt) {
@@ -90,7 +90,7 @@ export default function VerifyEmailPage() {
                         </div>
                         <h1 className="text-2xl font-bold mb-2">Verify Your Email</h1>
                         <p className="text-sm text-muted-foreground">
-                            We sent an 8-digit code to<br />
+                            We sent a 6-digit code to<br />
                             <span className="font-medium text-foreground">{email}</span>
                         </p>
                     </div>
@@ -116,7 +116,7 @@ export default function VerifyEmailPage() {
                     {/* Verification Code Input */}
                     <div className="mb-6">
                         <VerificationCodeInput
-                            length={8}
+                            length={6}
                             onComplete={handleCodeComplete}
                             disabled={isVerifying || success}
                         />
@@ -124,7 +124,7 @@ export default function VerifyEmailPage() {
 
                     {/* Helper Text */}
                     <p className="text-xs text-center text-muted-foreground mb-6">
-                        Enter the 8-digit code from your email
+                        Enter the 6-digit code from your email
                     </p>
 
                     {/* Resend Code */}
