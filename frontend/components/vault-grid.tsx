@@ -1,6 +1,6 @@
 "use client"
 
-import { Star, MoreHorizontal, Pencil, Trash2, Globe } from "lucide-react"
+import { Star, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { PasswordCell, CopyButton, ensureAbsoluteUrl } from "./vault-shared"
+import { PasswordCell, CopyButton, ensureAbsoluteUrl, WebsiteIcon } from "./vault-shared"
 import { ExternalLink } from "lucide-react"
 import type { VaultItem } from "@/hooks/use-vault"
 
@@ -29,8 +29,8 @@ export function VaultGrid({ items, onCopy, onEdit, onDelete, onToggleFavorite }:
                     <CardHeader className="p-4 pb-2">
                         <div className="flex items-start justify-between gap-2 overflow-hidden">
                             <div className="flex min-w-0 items-center gap-3">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/50 group-hover:bg-primary/5">
-                                    <Globe className="size-5 text-muted-foreground group-hover:text-primary" />
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/50 group-hover:bg-primary/5 overflow-hidden">
+                                    <WebsiteIcon url={item.website} className="size-6" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <a

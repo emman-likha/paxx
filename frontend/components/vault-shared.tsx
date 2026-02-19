@@ -1,7 +1,37 @@
 "use client"
 
 import { useState } from "react"
-import { Eye, EyeOff, Check, Copy } from "lucide-react"
+import { Eye, EyeOff, Check, Copy, Globe } from "lucide-react"
+
+export function getHostname(url: string): string {
+    try {
+        const absolute = url.startsWith("http") ? url : `https://${url}`
+        return new URL(absolute).hostname
+    } catch {
+        return url
+    }
+}
+
+export function WebsiteIcon({ url, className = "size-5" }: { url: string; className?: string }) {
+    const [error, setError] = useState(false)
+    const hostname = getHostname(url)
+
+    // Google Favicon service is faster and more reliable than most
+    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`
+
+    if (error || !hostname) {
+        return <Globe className={`${className} text-muted-foreground`} />
+    }
+
+    return (
+        <img
+            src={faviconUrl}
+            alt=""
+            className={className}
+            onError={() => setError(true)}
+        />
+    )
+}
 
 export function PasswordCell({ password }: { password: string }) {
     const [visible, setVisible] = useState(false)

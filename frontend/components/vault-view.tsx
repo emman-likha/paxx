@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Star, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react"
-import { PasswordCell, CopyButton, ensureAbsoluteUrl } from "./vault-shared"
+import { PasswordCell, CopyButton, ensureAbsoluteUrl, WebsiteIcon } from "./vault-shared"
 import type { VaultItem } from "@/hooks/use-vault"
 
 interface VaultViewProps {
@@ -86,8 +86,11 @@ export function VaultView({
                                     href={ensureAbsoluteUrl(item.website)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="group flex items-center gap-1.5 hover:text-primary transition-colors hover:underline"
+                                    className="group flex items-center gap-2.5 hover:text-primary transition-colors hover:underline"
                                 >
+                                    <div className="flex size-7 shrink-0 items-center justify-center rounded border bg-muted/50 overflow-hidden">
+                                        <WebsiteIcon url={item.website} className="size-4" />
+                                    </div>
                                     <span className="truncate" title={item.website}>{item.website}</span>
                                     <ExternalLink className="size-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </a>
