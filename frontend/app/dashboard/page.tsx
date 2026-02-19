@@ -2,8 +2,10 @@
 
 import { useState, useCallback } from "react"
 import { useVault, type VaultItem, type VaultCategory } from "@/hooks/use-vault"
+import { useMasterKey } from "@/hooks/use-master-key"
 import { useSettings } from "@/hooks/use-settings"
 import { VaultItemForm } from "@/components/vault-item-form"
+import { UnlockPrompt } from "@/components/unlock-prompt"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,47 +22,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff, Check } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
-function PasswordCell({ password }: { password: string }) {
-    const [visible, setVisible] = useState(false)
-
-    return (
-        <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">
-                {visible ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-            </span>
-            <button
-                onClick={() => setVisible(!visible)}
-                className="text-muted-foreground hover:text-foreground"
-            >
-                {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </button>
-        </div>
-    )
-}
-
-function CopyButton({ text, onCopy }: { text: string; onCopy: (t: string) => void }) {
-    const [copied, setCopied] = useState(false)
-
-    const handleCopy = () => {
-        onCopy(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-    }
-
-    return (
-        <button
-            onClick={handleCopy}
-            className="text-muted-foreground hover:text-foreground"
-            title="Copy password"
-        >
-            {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
-        </button>
-    )
-}
+import { VaultView } from "@/components/vault-view"
 
 export default function DashboardPage() {
+    const { needsUnlock } = useMasterKey()
     const { items, isLoading, addItem, updateItem, deleteItem, toggleFavorite } = useVault()
     const { settings } = useSettings()
     const [search, setSearch] = useState("")
@@ -95,6 +62,8 @@ export default function DashboardPage() {
             }, timer)
         }
     }, [settings])
+
+    if (needsUnlock) return <UnlockPrompt />
 
     return (
         <div className="flex flex-1 flex-col gap-4">
@@ -139,63 +108,13 @@ export default function DashboardPage() {
                     </div>
                 </div>
             ) : (
-                <div className="rounded-md border bg-card">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10"></TableHead>
-                                <TableHead>Website</TableHead>
-                                <TableHead>Username</TableHead>
-                                <TableHead>Password</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell>
-                                        <button
-                                            onClick={() => toggleFavorite.mutate({ id: item.id, favorite: !item.favorite })}
-                                            className={item.favorite ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}
-                                        >
-                                            <Star className="size-4" fill={item.favorite ? "currentColor" : "none"} />
-                                        </button>
-                                    </TableCell>
-                                    <TableCell className="font-medium">{item.website}</TableCell>
-                                    <TableCell>{item.username}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <PasswordCell password={item.password} />
-                                            <CopyButton text={item.password} onCopy={copyToClipboard} />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="size-8">
-                                                    <MoreHorizontal className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                                                    <Pencil className="size-4 mr-2" />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="text-destructive"
-                                                    onClick={() => deleteItem.mutate(item.id)}
-                                                >
-                                                    <Trash2 className="size-4 mr-2" />
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <VaultView
+                    items={filtered}
+                    onCopy={copyToClipboard}
+                    onEdit={setEditingItem}
+                    onDelete={(id) => deleteItem.mutate(id)}
+                    onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
+                />
             )}
 
             <VaultItemForm

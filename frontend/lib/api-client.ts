@@ -93,6 +93,17 @@ class ApiClient {
             this.request(`/api/vault/${id}`, { method: 'DELETE' }),
     };
 
+    // Breach monitoring endpoints
+    breach = {
+        checkPasswords: (passwords: { id: string; hash: string }[]) =>
+            this.request<{
+                results: { id: string; compromised: boolean; exposures: number }[];
+            }>('/api/breach/check-passwords', {
+                method: 'POST',
+                body: JSON.stringify({ passwords }),
+            }),
+    };
+
     // Health check
     health = () => this.request('/health', { method: 'GET' });
 }

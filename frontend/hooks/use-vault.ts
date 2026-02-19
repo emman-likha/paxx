@@ -40,6 +40,19 @@ interface VaultItemInput {
     category?: VaultCategory
 }
 
+interface EncryptedVaultItem {
+    id: string
+    website: string
+    username: string
+    password: string
+    notes: string
+    favorite: boolean
+    category: VaultCategory
+    deleted_at: string | null
+    created_at: string
+    updated_at: string
+}
+
 async function encryptField(text: string, key: CryptoKey): Promise<string> {
     if (!text) return ""
     const { ciphertext, iv } = await encrypt(text, key)
@@ -53,29 +66,51 @@ async function decryptField(stored: string, key: CryptoKey): Promise<string> {
     return decrypt(ciphertext, iv, key)
 }
 
+async function getUserId(): Promise<string> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Not authenticated")
+    return user.id
+}
+
+async function readEncryptedItems(userId: string): Promise<EncryptedVaultItem[]> {
+    const { data, error } = await supabase
+        .from("vaults")
+        .select("items")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+    if (error) throw error
+    if (!data) return []
+    return (data.items as EncryptedVaultItem[]) || []
+}
+
+async function writeEncryptedItems(userId: string, items: EncryptedVaultItem[]): Promise<void> {
+    const { error } = await supabase
+        .from("vaults")
+        .upsert({
+            user_id: userId,
+            items: items as any,
+            updated_at: new Date().toISOString(),
+        })
+
+    if (error) throw error
+}
+
 export function useVault() {
     const queryClient = useQueryClient()
     const { masterKey } = useMasterKey()
 
-    // Fetch ALL items (including soft-deleted) so trash page can use the same cache
+    // Fetch the single JSONB row, decrypt all items
     const query = useQuery({
         queryKey: ["vault-items"],
         enabled: !!masterKey,
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error("Not authenticated")
-
-            const { data, error } = await supabase
-                .from("vault_items")
-                .select("*")
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-
-            if (error) throw error
-            if (!data || !masterKey) return []
+            const userId = await getUserId()
+            const encryptedItems = await readEncryptedItems(userId)
+            if (!masterKey || encryptedItems.length === 0) return []
 
             const decrypted = await Promise.all(
-                data.map(async (item) => ({
+                encryptedItems.map(async (item) => ({
                     ...item,
                     website: await decryptField(item.website, masterKey),
                     username: await decryptField(item.username, masterKey),
@@ -85,33 +120,41 @@ export function useVault() {
                     deleted_at: item.deleted_at || null,
                 }))
             )
+
+            // Sort by created_at DESC client-side
+            decrypted.sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+
             return decrypted as VaultItem[]
         },
     })
 
     const allItems = query.data ?? []
-    // Active items = not soft-deleted
     const items = allItems.filter((i) => !i.deleted_at)
-    // Trashed items = soft-deleted
     const trashedItems = allItems.filter((i) => !!i.deleted_at)
 
     const addItem = useMutation({
         mutationFn: async (input: VaultItemInput) => {
             if (!masterKey) throw new Error("Vault is locked")
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error("Not authenticated")
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
 
-            const encrypted = {
-                user_id: user.id,
+            const now = new Date().toISOString()
+            const newItem: EncryptedVaultItem = {
+                id: crypto.randomUUID(),
                 website: await encryptField(input.website, masterKey),
                 username: await encryptField(input.username, masterKey),
                 password: await encryptField(input.password, masterKey),
                 notes: await encryptField(input.notes, masterKey),
+                favorite: false,
                 category: input.category || "other",
+                deleted_at: null,
+                created_at: now,
+                updated_at: now,
             }
 
-            const { error } = await supabase.from("vault_items").insert(encrypted)
-            if (error) throw error
+            await writeEncryptedItems(userId, [...existing, newItem])
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
@@ -119,78 +162,93 @@ export function useVault() {
     const updateItem = useMutation({
         mutationFn: async ({ id, ...input }: VaultItemInput & { id: string }) => {
             if (!masterKey) throw new Error("Vault is locked")
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
 
-            const encrypted = {
-                website: await encryptField(input.website, masterKey),
-                username: await encryptField(input.username, masterKey),
-                password: await encryptField(input.password, masterKey),
-                notes: await encryptField(input.notes, masterKey),
-                category: input.category || "other",
-                updated_at: new Date().toISOString(),
-            }
+            const updated = await Promise.all(
+                existing.map(async (item) => {
+                    if (item.id !== id) return item
+                    return {
+                        ...item,
+                        website: await encryptField(input.website, masterKey),
+                        username: await encryptField(input.username, masterKey),
+                        password: await encryptField(input.password, masterKey),
+                        notes: await encryptField(input.notes, masterKey),
+                        category: input.category || "other",
+                        updated_at: new Date().toISOString(),
+                    }
+                })
+            )
 
-            const { error } = await supabase.from("vault_items").update(encrypted).eq("id", id)
-            if (error) throw error
+            await writeEncryptedItems(userId, updated)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
 
-    // Soft delete — set deleted_at timestamp
     const deleteItem = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
-                .from("vault_items")
-                .update({ deleted_at: new Date().toISOString() })
-                .eq("id", id)
-            if (error) throw error
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
+
+            const updated = existing.map((item) =>
+                item.id === id
+                    ? { ...item, deleted_at: new Date().toISOString() }
+                    : item
+            )
+
+            await writeEncryptedItems(userId, updated)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
 
-    // Restore from trash
     const restoreItem = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
-                .from("vault_items")
-                .update({ deleted_at: null })
-                .eq("id", id)
-            if (error) throw error
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
+
+            const updated = existing.map((item) =>
+                item.id === id
+                    ? { ...item, deleted_at: null }
+                    : item
+            )
+
+            await writeEncryptedItems(userId, updated)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
 
-    // Permanent delete
     const permanentDeleteItem = useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from("vault_items").delete().eq("id", id)
-            if (error) throw error
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
+            const filtered = existing.filter((item) => item.id !== id)
+            await writeEncryptedItems(userId, filtered)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
 
-    // Empty trash — permanently delete all trashed items
     const emptyTrash = useMutation({
         mutationFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error("Not authenticated")
-
-            const { error } = await supabase
-                .from("vault_items")
-                .delete()
-                .eq("user_id", user.id)
-                .not("deleted_at", "is", null)
-            if (error) throw error
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
+            const filtered = existing.filter((item) => !item.deleted_at)
+            await writeEncryptedItems(userId, filtered)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })
 
     const toggleFavorite = useMutation({
         mutationFn: async ({ id, favorite }: { id: string; favorite: boolean }) => {
-            const { error } = await supabase
-                .from("vault_items")
-                .update({ favorite, updated_at: new Date().toISOString() })
-                .eq("id", id)
-            if (error) throw error
+            const userId = await getUserId()
+            const existing = await readEncryptedItems(userId)
+
+            const updated = existing.map((item) =>
+                item.id === id
+                    ? { ...item, favorite, updated_at: new Date().toISOString() }
+                    : item
+            )
+
+            await writeEncryptedItems(userId, updated)
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["vault-items"] }),
     })

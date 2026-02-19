@@ -11,35 +11,10 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Clock, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff } from "lucide-react"
+import { Clock } from "lucide-react"
 
-function PasswordCell({ password }: { password: string }) {
-    const [visible, setVisible] = useState(false)
-    return (
-        <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">
-                {visible ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-            </span>
-            <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground">
-                {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </button>
-        </div>
-    )
-}
-
-function timeAgo(dateStr: string): string {
-    const now = Date.now()
-    const then = new Date(dateStr).getTime()
-    const diff = now - then
-    const minutes = Math.floor(diff / 60000)
-    if (minutes < 1) return "Just now"
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    if (days < 7) return `${days}d ago`
-    return new Date(dateStr).toLocaleDateString()
-}
+import { VaultView } from "@/components/vault-view"
+import { timeAgo } from "@/components/vault-shared"
 
 export default function RecentPage() {
     const { items, updateItem, deleteItem, toggleFavorite } = useVault()
@@ -88,66 +63,15 @@ export default function RecentPage() {
                     </div>
                 </div>
             ) : (
-                <div className="rounded-md border bg-card">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10"></TableHead>
-                                <TableHead>Website</TableHead>
-                                <TableHead>Username</TableHead>
-                                <TableHead>Password</TableHead>
-                                <TableHead>Modified</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {recentItems.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell>
-                                        <button
-                                            onClick={() => toggleFavorite.mutate({ id: item.id, favorite: !item.favorite })}
-                                            className={item.favorite ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}
-                                        >
-                                            <Star className="size-4" fill={item.favorite ? "currentColor" : "none"} />
-                                        </button>
-                                    </TableCell>
-                                    <TableCell className="font-medium">{item.website}</TableCell>
-                                    <TableCell>{item.username}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <PasswordCell password={item.password} />
-                                            <button onClick={() => copyToClipboard(item.password)} className="text-muted-foreground hover:text-foreground" title="Copy">
-                                                <Copy className="size-3.5" />
-                                            </button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm text-muted-foreground">
-                                            {timeAgo(item.updated_at || item.created_at)}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="size-8">
-                                                    <MoreHorizontal className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                                                    <Pencil className="size-4 mr-2" /> Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => deleteItem.mutate(item.id)}>
-                                                    <Trash2 className="size-4 mr-2" /> Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <VaultView
+                    items={recentItems}
+                    onCopy={copyToClipboard}
+                    onEdit={setEditingItem}
+                    onDelete={(id) => deleteItem.mutate(id)}
+                    onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
+                    showTimestamp
+                    timeAgo={timeAgo}
+                />
             )}
 
             <VaultItemForm

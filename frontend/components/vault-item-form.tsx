@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     Sheet,
     SheetContent,
@@ -55,20 +55,30 @@ export function VaultItemForm({ open, onOpenChange, item, onSubmit, isSubmitting
 
     const isEdit = !!item
 
+    // Sync form state when item changes
+    useEffect(() => {
+        if (item) {
+            setWebsite(item.website || "")
+            setUsername(item.username || "")
+            setPassword(item.password || "")
+            setNotes(item.notes || "")
+            setCategory(item.category || "other")
+        } else {
+            setWebsite("")
+            setUsername("")
+            setPassword("")
+            setNotes("")
+            setCategory("other")
+        }
+        setShowPassword(false)
+    }, [item])
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         onSubmit({ website, username, password, notes, category })
     }
 
     const handleOpenChange = (next: boolean) => {
-        if (!next) {
-            setWebsite("")
-            setUsername("")
-            setPassword("")
-            setNotes("")
-            setCategory("other")
-            setShowPassword(false)
-        }
         onOpenChange(next)
     }
 

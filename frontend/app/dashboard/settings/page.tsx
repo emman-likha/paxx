@@ -225,45 +225,45 @@ export default function SettingsPage() {
 
             // Re-encrypt all vault items
             if (masterKey) {
-                const { data: items } = await supabase
-                    .from("vault_items")
-                    .select("*")
+                const { data: vault } = await supabase
+                    .from("vaults")
+                    .select("items")
                     .eq("user_id", user.id)
+                    .maybeSingle()
 
-                if (items && items.length > 0) {
-                    for (const item of items) {
-                        const decryptField = async (stored: string) => {
-                            if (!stored) return ""
-                            const [iv, ciphertext] = stored.split(":")
-                            if (!iv || !ciphertext) return stored
-                            return decrypt(ciphertext, iv, masterKey)
-                        }
+                const items = (vault?.items as any[]) || []
 
-                        const encryptField = async (text: string) => {
-                            if (!text) return ""
-                            const { ciphertext, iv } = await encrypt(text, newKey)
-                            return `${iv}:${ciphertext}`
-                        }
-
-                        const decrypted = {
-                            website: await decryptField(item.website),
-                            username: await decryptField(item.username),
-                            password: await decryptField(item.password),
-                            notes: await decryptField(item.notes || ""),
-                        }
-
-                        const reEncrypted = {
-                            website: await encryptField(decrypted.website),
-                            username: await encryptField(decrypted.username),
-                            password: await encryptField(decrypted.password),
-                            notes: await encryptField(decrypted.notes),
-                        }
-
-                        await supabase
-                            .from("vault_items")
-                            .update(reEncrypted)
-                            .eq("id", item.id)
+                if (items.length > 0) {
+                    const decryptField = async (stored: string) => {
+                        if (!stored) return ""
+                        const [iv, ciphertext] = stored.split(":")
+                        if (!iv || !ciphertext) return stored
+                        return decrypt(ciphertext, iv, masterKey)
                     }
+
+                    const encryptField = async (text: string) => {
+                        if (!text) return ""
+                        const { ciphertext, iv } = await encrypt(text, newKey)
+                        return `${iv}:${ciphertext}`
+                    }
+
+                    const reEncryptedItems = await Promise.all(
+                        items.map(async (item: any) => ({
+                            ...item,
+                            website: await encryptField(await decryptField(item.website)),
+                            username: await encryptField(await decryptField(item.username)),
+                            password: await encryptField(await decryptField(item.password)),
+                            notes: await encryptField(await decryptField(item.notes || "")),
+                        }))
+                    )
+
+                    await supabase
+                        .from("vaults")
+                        .upsert({
+                            user_id: user.id,
+                            items: reEncryptedItems,
+                            updated_at: new Date().toISOString(),
+                        })
                 }
             }
 
@@ -297,15 +297,17 @@ export default function SettingsPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            const { data: items } = await supabase
-                .from("vault_items")
-                .select("*")
+            const { data: vault } = await supabase
+                .from("vaults")
+                .select("items")
                 .eq("user_id", user.id)
+                .maybeSingle()
 
-            if (!items) throw new Error("No items found")
+            const items = (vault?.items as any[]) || []
+            if (items.length === 0) throw new Error("No items found")
 
             const decrypted = await Promise.all(
-                items.map(async (item) => {
+                items.map(async (item: any) => {
                     const decryptField = async (stored: string) => {
                         if (!stored) return ""
                         const [iv, ciphertext] = stored.split(":")
@@ -360,24 +362,46 @@ export default function SettingsPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            for (const item of data.items) {
-                const encryptField = async (text: string) => {
-                    if (!text) return ""
-                    const { ciphertext, iv } = await encrypt(text, masterKey)
-                    return `${iv}:${ciphertext}`
-                }
+            // Read existing items from vaults
+            const { data: vault } = await supabase
+                .from("vaults")
+                .select("items")
+                .eq("user_id", user.id)
+                .maybeSingle()
 
-                const encrypted = {
-                    user_id: user.id,
-                    website: await encryptField(item.website || ""),
-                    username: await encryptField(item.username || ""),
-                    password: await encryptField(item.password || ""),
-                    notes: await encryptField(item.notes || ""),
-                    favorite: item.favorite || false,
-                }
+            const existingItems = (vault?.items as any[]) || []
 
-                await supabase.from("vault_items").insert(encrypted)
+            const encryptField = async (text: string) => {
+                if (!text) return ""
+                const { ciphertext, iv } = await encrypt(text, masterKey)
+                return `${iv}:${ciphertext}`
             }
+
+            const newItems = await Promise.all(
+                data.items.map(async (item: any) => {
+                    const now = new Date().toISOString()
+                    return {
+                        id: crypto.randomUUID(),
+                        website: await encryptField(item.website || ""),
+                        username: await encryptField(item.username || ""),
+                        password: await encryptField(item.password || ""),
+                        notes: await encryptField(item.notes || ""),
+                        favorite: item.favorite || false,
+                        category: item.category || "other",
+                        deleted_at: null,
+                        created_at: item.created_at || now,
+                        updated_at: now,
+                    }
+                })
+            )
+
+            await supabase
+                .from("vaults")
+                .upsert({
+                    user_id: user.id,
+                    items: [...existingItems, ...newItems],
+                    updated_at: new Date().toISOString(),
+                })
 
             queryClient.invalidateQueries({ queryKey: ["vault-items"] })
         } catch (err: any) {
@@ -395,7 +419,13 @@ export default function SettingsPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            await supabase.from("vault_items").delete().eq("user_id", user.id)
+            await supabase
+                .from("vaults")
+                .upsert({
+                    user_id: user.id,
+                    items: [],
+                    updated_at: new Date().toISOString(),
+                })
             queryClient.invalidateQueries({ queryKey: ["vault-items"] })
             setClearVaultOpen(false)
         } catch (err: any) {
@@ -413,8 +443,8 @@ export default function SettingsPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            // Delete vault items first
-            await supabase.from("vault_items").delete().eq("user_id", user.id)
+            // Delete vault first
+            await supabase.from("vaults").delete().eq("user_id", user.id)
             // Delete profile
             await supabase.from("profiles").delete().eq("id", user.id)
             // Sign out

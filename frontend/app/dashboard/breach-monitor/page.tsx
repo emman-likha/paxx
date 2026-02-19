@@ -1,71 +1,102 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useVault } from "@/hooks/use-vault"
+import { useMasterKey } from "@/hooks/use-master-key"
+import { UnlockPrompt } from "@/components/unlock-prompt"
+import { api } from "@/lib/api-client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-    ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, Loader2, Globe, Calendar, Eye,
+    ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, Loader2, Globe, Eye, Hash,
 } from "lucide-react"
-
-// Simulated breach database for demo purposes
-const SIMULATED_BREACHES: Record<string, { date: string; records: string; dataTypes: string[] }> = {
-    "linkedin.com": { date: "2021-06-22", records: "700M", dataTypes: ["Email", "Name", "Phone"] },
-    "facebook.com": { date: "2021-04-03", records: "533M", dataTypes: ["Email", "Phone", "DOB"] },
-    "twitter.com": { date: "2023-01-05", records: "200M", dataTypes: ["Email", "Username"] },
-    "adobe.com": { date: "2013-10-04", records: "153M", dataTypes: ["Email", "Password hints"] },
-    "dropbox.com": { date: "2012-07-01", records: "68M", dataTypes: ["Email", "Password"] },
-    "yahoo.com": { date: "2017-10-03", records: "3B", dataTypes: ["Email", "Password", "Security Q&A"] },
-    "myspace.com": { date: "2016-05-31", records: "360M", dataTypes: ["Email", "Password"] },
-}
 
 interface BreachResult {
     website: string
-    breached: boolean
-    breach?: { date: string; records: string; dataTypes: string[] }
+    username: string
+    compromised: boolean
+    exposures: number
+}
+
+async function sha1(text: string): Promise<string> {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    const hashBuffer = await crypto.subtle.digest("SHA-1", data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
 }
 
 export default function BreachMonitorPage() {
+    const { needsUnlock } = useMasterKey()
     const { items } = useVault()
     const [scanning, setScanning] = useState(false)
     const [scanned, setScanned] = useState(false)
     const [results, setResults] = useState<BreachResult[]>([])
+    const [error, setError] = useState<string | null>(null)
 
     const handleScan = async () => {
         setScanning(true)
         setResults([])
+        setError(null)
 
-        // Simulate scanning delay for each item
-        const scanResults: BreachResult[] = []
-        for (const item of items) {
-            await new Promise((r) => setTimeout(r, 300 + Math.random() * 200))
+        try {
+            // SHA-1 hash passwords client-side — plaintext never leaves the browser
+            const hashed = await Promise.all(
+                items.map(async (item) => ({
+                    id: item.id,
+                    hash: await sha1(item.password),
+                }))
+            )
 
-            const domain = item.website.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0]
-            const breach = SIMULATED_BREACHES[domain]
+            const { results: apiResults } = await api.breach.checkPasswords(hashed)
 
-            scanResults.push({
-                website: item.website,
-                breached: !!breach,
-                breach,
+            // Map results back to vault items
+            const scanResults: BreachResult[] = apiResults.map((r) => {
+                const item = items.find((i) => i.id === r.id)
+                return {
+                    website: item?.website || "Unknown",
+                    username: item?.username || "",
+                    compromised: r.compromised,
+                    exposures: r.exposures,
+                }
             })
-        }
 
-        setResults(scanResults)
-        setScanning(false)
-        setScanned(true)
+            setResults(scanResults)
+            setScanned(true)
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to reach breach monitor service. Is the backend running?"
+            )
+        } finally {
+            setScanning(false)
+        }
     }
 
-    const breachedCount = results.filter((r) => r.breached).length
-    const safeCount = results.filter((r) => !r.breached).length
+    const compromisedCount = results.filter((r) => r.compromised).length
+    const safeCount = results.filter((r) => !r.compromised).length
+
+    if (needsUnlock) return <UnlockPrompt />
 
     return (
         <div className="flex flex-1 flex-col gap-6">
             <div>
                 <h1 className="text-3xl font-bold">Breach Monitor</h1>
                 <p className="text-muted-foreground">
-                    Check if your accounts have appeared in known data breaches
+                    Check if your passwords have appeared in known data breaches
                 </p>
             </div>
+
+            {/* Error Banner */}
+            {error && (
+                <Card className="border-yellow-500/30">
+                    <CardContent className="flex items-center gap-3 pt-6">
+                        <AlertTriangle className="size-5 text-yellow-500 shrink-0" />
+                        <p className="text-sm text-yellow-600 dark:text-yellow-400">{error}</p>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Scan Card */}
             <Card>
@@ -78,7 +109,7 @@ export default function BreachMonitorPage() {
                             <div>
                                 <h2 className="text-xl font-bold">Scan Your Vault</h2>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Check {items.length} saved site{items.length !== 1 ? "s" : ""} against known data breaches
+                                    Check {items.length} saved password{items.length !== 1 ? "s" : ""} against known data breaches
                                 </p>
                             </div>
                             <Button onClick={handleScan} disabled={scanning || items.length === 0} size="lg">
@@ -95,13 +126,13 @@ export default function BreachMonitorPage() {
                                 )}
                             </Button>
                             <p className="text-xs text-muted-foreground">
-                                Demo: Uses simulated breach data for portfolio demonstration
+                                Powered by Have I Been Pwned &middot; Your passwords never leave your browser
                             </p>
                         </>
                     ) : (
                         <>
-                            <div className={`flex size-16 items-center justify-center rounded-full ${breachedCount > 0 ? "bg-red-500/10" : "bg-green-500/10"}`}>
-                                {breachedCount > 0 ? (
+                            <div className={`flex size-16 items-center justify-center rounded-full ${compromisedCount > 0 ? "bg-red-500/10" : "bg-green-500/10"}`}>
+                                {compromisedCount > 0 ? (
                                     <ShieldAlert className="size-8 text-red-500" />
                                 ) : (
                                     <ShieldCheck className="size-8 text-green-500" />
@@ -109,12 +140,12 @@ export default function BreachMonitorPage() {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold">
-                                    {breachedCount > 0
-                                        ? `${breachedCount} Breach${breachedCount !== 1 ? "es" : ""} Found`
-                                        : "No Breaches Found"}
+                                    {compromisedCount > 0
+                                        ? `${compromisedCount} Compromised Password${compromisedCount !== 1 ? "s" : ""}`
+                                        : "All Passwords Safe"}
                                 </h2>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    {safeCount} of {results.length} sites are clean
+                                    {safeCount} of {results.length} passwords are clean
                                 </p>
                             </div>
                             <div className="flex gap-3">
@@ -135,50 +166,44 @@ export default function BreachMonitorPage() {
                         <div className="flex items-center gap-3">
                             <Loader2 className="size-5 animate-spin text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">
-                                Checking sites against breach databases...
+                                Checking passwords against breach databases...
                             </span>
                         </div>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Breached Results */}
-            {results.filter((r) => r.breached).length > 0 && (
+            {/* Compromised Results */}
+            {results.filter((r) => r.compromised).length > 0 && (
                 <Card className="border-red-500/30">
                     <CardHeader>
                         <div className="flex items-center gap-3">
                             <AlertTriangle className="size-5 text-red-500" />
                             <div>
-                                <CardTitle className="text-red-500">Breached Sites</CardTitle>
-                                <CardDescription>These sites have had known data breaches</CardDescription>
+                                <CardTitle className="text-red-500">Compromised Passwords</CardTitle>
+                                <CardDescription>These passwords have been found in data breaches — change them immediately</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        {results.filter((r) => r.breached).map((result, i) => (
+                        {results.filter((r) => r.compromised).map((result, i) => (
                             <div key={i} className="rounded-lg border border-red-500/20 px-4 py-3">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="font-medium">{result.website}</span>
                                     <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
-                                        Breached
+                                        Compromised
                                     </span>
                                 </div>
-                                {result.breach && (
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                                            <Calendar className="size-3.5" />
-                                            {new Date(result.breach.date).toLocaleDateString()}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                                            <Globe className="size-3.5" />
-                                            {result.breach.records} records
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                                            <Eye className="size-3.5" />
-                                            {result.breach.dataTypes.join(", ")}
-                                        </div>
+                                <div className="flex items-center gap-6 text-sm">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Globe className="size-3.5" />
+                                        {result.username}
                                     </div>
-                                )}
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Eye className="size-3.5" />
+                                        Seen {result.exposures.toLocaleString()} times in breaches
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </CardContent>
@@ -186,20 +211,20 @@ export default function BreachMonitorPage() {
             )}
 
             {/* Safe Results */}
-            {results.filter((r) => !r.breached).length > 0 && (
+            {results.filter((r) => !r.compromised).length > 0 && (
                 <Card>
                     <CardHeader>
                         <div className="flex items-center gap-3">
                             <CheckCircle2 className="size-5 text-green-500" />
                             <div>
-                                <CardTitle>Safe Sites</CardTitle>
-                                <CardDescription>No known breaches found for these sites</CardDescription>
+                                <CardTitle>Safe Passwords</CardTitle>
+                                <CardDescription>These passwords have not been found in any known breaches</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
-                            {results.filter((r) => !r.breached).map((result, i) => (
+                            {results.filter((r) => !r.compromised).map((result, i) => (
                                 <div key={i} className="flex items-center justify-between rounded-lg border px-4 py-2.5">
                                     <span className="text-sm font-medium">{result.website}</span>
                                     <CheckCircle2 className="size-4 text-green-500" />

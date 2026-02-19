@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { authRoutes } from './routes/auth';
 import { vaultRoutes } from './routes/vault';
+import { breachRoutes } from './routes/breach';
 
 const app = new Elysia()
     // CORS configuration - allows frontend to communicate with backend
@@ -22,6 +23,7 @@ const app = new Elysia()
         app
             .use(authRoutes)
             .use(vaultRoutes)
+            .use(breachRoutes)
     )
     .listen(process.env.PORT || 3001);
 

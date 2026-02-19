@@ -12,21 +12,9 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Search, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff } from "lucide-react"
+import { Search, Star } from "lucide-react"
 
-function PasswordCell({ password }: { password: string }) {
-    const [visible, setVisible] = useState(false)
-    return (
-        <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">
-                {visible ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-            </span>
-            <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground">
-                {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </button>
-        </div>
-    )
-}
+import { VaultView } from "@/components/vault-view"
 
 export default function FavoritesPage() {
     const { items, updateItem, deleteItem, toggleFavorite } = useVault()
@@ -83,60 +71,13 @@ export default function FavoritesPage() {
                     </div>
                 </div>
             ) : (
-                <div className="rounded-md border bg-card">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10"></TableHead>
-                                <TableHead>Website</TableHead>
-                                <TableHead>Username</TableHead>
-                                <TableHead>Password</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell>
-                                        <button
-                                            onClick={() => toggleFavorite.mutate({ id: item.id, favorite: false })}
-                                            className="text-yellow-500"
-                                        >
-                                            <Star className="size-4" fill="currentColor" />
-                                        </button>
-                                    </TableCell>
-                                    <TableCell className="font-medium">{item.website}</TableCell>
-                                    <TableCell>{item.username}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <PasswordCell password={item.password} />
-                                            <button onClick={() => copyToClipboard(item.password)} className="text-muted-foreground hover:text-foreground" title="Copy password">
-                                                <Copy className="size-3.5" />
-                                            </button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="size-8">
-                                                    <MoreHorizontal className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                                                    <Pencil className="size-4 mr-2" /> Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => deleteItem.mutate(item.id)}>
-                                                    <Trash2 className="size-4 mr-2" /> Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <VaultView
+                    items={filtered}
+                    onCopy={copyToClipboard}
+                    onEdit={setEditingItem}
+                    onDelete={(id) => deleteItem.mutate(id)}
+                    onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
+                />
             )}
 
             <VaultItemForm

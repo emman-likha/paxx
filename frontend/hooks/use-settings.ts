@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
 
 export interface Settings {
     "clipboard-clear-timer": number
@@ -54,22 +55,79 @@ function writeToStorage<K extends keyof Settings>(key: K, value: Settings[K]) {
 }
 
 export function useSettings() {
-    // Always start with defaults to avoid hydration mismatch
     const [settings, setSettings] = useState<Settings>({ ...DEFAULTS })
+    const [isLoading, setIsLoading] = useState(true)
 
-    // Load from localStorage only after mount (client-side)
+    // Load from localStorage first, then sync from DB
     useEffect(() => {
-        const loaded = { ...DEFAULTS }
-        for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
-            (loaded as any)[key] = readFromStorage(key)
+        const loadSettings = async () => {
+            // 1. Initial load from localStorage (fast)
+            const loaded = { ...DEFAULTS }
+            for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
+                (loaded as any)[key] = readFromStorage(key)
+            }
+            setSettings(loaded)
+
+            // 2. Sync from Supabase if logged in
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    const { data, error } = await supabase
+                        .from("user_settings")
+                        .select("settings")
+                        .eq("user_id", user.id)
+                        .maybeSingle()
+
+                    if (data?.settings) {
+                        const dbSettings = data.settings as Partial<Settings>
+                        const merged = { ...loaded, ...dbSettings }
+                        setSettings(merged)
+                        // Update local storage to match DB
+                        for (const key of Object.keys(merged) as (keyof Settings)[]) {
+                            writeToStorage(key, (merged as any)[key])
+                        }
+                    } else if (!error) {
+                        // If no settings in DB, push local settings to DB
+                        await supabase
+                            .from("user_settings")
+                            .upsert({ user_id: user.id, settings: loaded })
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to sync settings:", err)
+            } finally {
+                setIsLoading(false)
+            }
         }
-        setSettings(loaded)
+
+        loadSettings()
     }, [])
 
-    const updateSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
+    const updateSetting = useCallback(async <K extends keyof Settings>(key: K, value: Settings[K]) => {
+        // Optimistic update locally
         writeToStorage(key, value)
-        setSettings((prev) => ({ ...prev, [key]: value }))
+        setSettings((prev) => {
+            const next = { ...prev, [key]: value }
+
+            // Sync to Supabase in background
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user) {
+                    supabase
+                        .from("user_settings")
+                        .upsert({
+                            user_id: user.id,
+                            settings: next,
+                            updated_at: new Date().toISOString()
+                        })
+                        .then(({ error }) => {
+                            if (error) console.error("Failed to persist setting:", error)
+                        })
+                }
+            })
+
+            return next
+        })
     }, [])
 
-    return { settings, updateSetting }
+    return { settings, updateSetting, isLoading }
 }

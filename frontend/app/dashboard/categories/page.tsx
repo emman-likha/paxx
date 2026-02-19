@@ -14,8 +14,16 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-    Search, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff,
-    Users, Briefcase, Landmark, ShoppingCart, Tv, Plane, Heart, GraduationCap, FolderOpen,
+    Search,
+    FolderOpen,
+    Users,
+    Briefcase,
+    Landmark,
+    ShoppingCart,
+    Tv,
+    Plane,
+    Heart,
+    GraduationCap,
 } from "lucide-react"
 
 const CATEGORY_ICONS: Record<VaultCategory, React.ComponentType<{ className?: string }>> = {
@@ -42,19 +50,7 @@ const CATEGORY_COLORS: Record<VaultCategory, string> = {
     other: "bg-gray-500/10 text-gray-500 border-gray-500/20",
 }
 
-function PasswordCell({ password }: { password: string }) {
-    const [visible, setVisible] = useState(false)
-    return (
-        <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">
-                {visible ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-            </span>
-            <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground">
-                {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </button>
-        </div>
-    )
-}
+import { VaultView } from "@/components/vault-view"
 
 export default function CategoriesPage() {
     const { items, updateItem, deleteItem, toggleFavorite } = useVault()
@@ -100,11 +96,10 @@ export default function CategoriesPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <button
                     onClick={() => setSelectedCategory("all")}
-                    className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                        selectedCategory === "all"
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted"
-                    }`}
+                    className={`rounded-lg border px-4 py-3 text-left transition-colors ${selectedCategory === "all"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted"
+                        }`}
                 >
                     <p className="text-sm font-medium">All</p>
                     <p className="text-2xl font-bold">{items.length}</p>
@@ -115,11 +110,10 @@ export default function CategoriesPage() {
                         <button
                             key={cat.value}
                             onClick={() => setSelectedCategory(cat.value)}
-                            className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                                selectedCategory === cat.value
-                                    ? `border-primary bg-primary/5`
-                                    : "border-border hover:bg-muted"
-                            }`}
+                            className={`rounded-lg border px-4 py-3 text-left transition-colors ${selectedCategory === cat.value
+                                ? `border-primary bg-primary/5`
+                                : "border-border hover:bg-muted"
+                                }`}
                         >
                             <div className="flex items-center gap-2 mb-1">
                                 <Icon className="size-4 text-muted-foreground" />
@@ -158,70 +152,14 @@ export default function CategoriesPage() {
                     </div>
                 </div>
             ) : (
-                <div className="rounded-md border bg-card">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10"></TableHead>
-                                <TableHead>Website</TableHead>
-                                <TableHead>Username</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Password</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filtered.map((item) => {
-                                const CatIcon = CATEGORY_ICONS[item.category]
-                                return (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <button
-                                                onClick={() => toggleFavorite.mutate({ id: item.id, favorite: !item.favorite })}
-                                                className={item.favorite ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}
-                                            >
-                                                <Star className="size-4" fill={item.favorite ? "currentColor" : "none"} />
-                                            </button>
-                                        </TableCell>
-                                        <TableCell className="font-medium">{item.website}</TableCell>
-                                        <TableCell>{item.username}</TableCell>
-                                        <TableCell>
-                                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[item.category]}`}>
-                                                <CatIcon className="size-3" />
-                                                {VAULT_CATEGORIES.find((c) => c.value === item.category)?.label}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <PasswordCell password={item.password} />
-                                                <button onClick={() => copyToClipboard(item.password)} className="text-muted-foreground hover:text-foreground" title="Copy">
-                                                    <Copy className="size-3.5" />
-                                                </button>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="size-8">
-                                                        <MoreHorizontal className="size-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                                                        <Pencil className="size-4 mr-2" /> Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => deleteItem.mutate(item.id)}>
-                                                        <Trash2 className="size-4 mr-2" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
+                <VaultView
+                    items={filtered}
+                    onCopy={copyToClipboard}
+                    onEdit={setEditingItem}
+                    onDelete={(id) => deleteItem.mutate(id)}
+                    onToggleFavorite={(id, favorite) => toggleFavorite.mutate({ id, favorite })}
+                    showCategory
+                />
             )}
 
             <VaultItemForm
