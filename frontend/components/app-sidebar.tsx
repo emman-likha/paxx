@@ -1,17 +1,13 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
     Lock,
-    Star,
-    FolderKey,
-    KeyRound,
     Settings,
-    User,
     LogOut,
     Shield,
     Users,
-    LayoutDashboard,
 } from "lucide-react"
 
 import {
@@ -29,41 +25,21 @@ import {
 } from "@/components/ui/sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/hooks/use-auth"
 
-// Menu items for Paxx password manager
 const mainItems = [
     {
         title: "All Passwords",
         url: "/dashboard",
         icon: Lock,
     },
-    {
-        title: "Favorites",
-        url: "/dashboard/favorites",
-        icon: Star,
-    },
-    {
-        title: "Categories",
-        url: "/dashboard/categories",
-        icon: FolderKey,
-    },
-    {
-        title: "Generator",
-        url: "/dashboard/generator",
-        icon: KeyRound,
-    },
 ]
 
 const adminItems = [
     {
         title: "User Management",
-        url: "/dashboard/admin/users",
+        url: "/dashboard/admin",
         icon: Users,
-    },
-    {
-        title: "System Logs",
-        url: "/dashboard/admin/logs",
-        icon: LayoutDashboard,
     },
 ]
 
@@ -72,11 +48,6 @@ const settingsItems = [
         title: "Settings",
         url: "/dashboard/settings",
         icon: Settings,
-    },
-    {
-        title: "Profile",
-        url: "/dashboard/profile",
-        icon: User,
     },
 ]
 
@@ -95,6 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
     })
 
+    const { signOut } = useAuth()
     const isAdmin = profile?.is_admin
 
     return (
@@ -103,7 +75,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <a href="/dashboard">
+                            <Link href="/dashboard">
                                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                                     <Shield className="size-4" />
                                 </div>
@@ -111,7 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     <span className="truncate font-semibold">Paxx</span>
                                     <span className="truncate text-xs">Password Manager</span>
                                 </div>
-                            </a>
+                            </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
@@ -124,10 +96,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             {mainItems.map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton asChild>
-                                        <a href={item.url}>
+                                        <Link href={item.url}>
                                             <item.icon />
                                             <span>{item.title}</span>
-                                        </a>
+                                        </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
@@ -143,10 +115,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 {adminItems.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton asChild>
-                                            <a href={item.url}>
+                                            <Link href={item.url}>
                                                 <item.icon />
                                                 <span>{item.title}</span>
-                                            </a>
+                                            </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                 ))}
@@ -162,10 +134,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             {settingsItems.map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton asChild>
-                                        <a href={item.url}>
+                                        <Link href={item.url}>
                                             <item.icon />
                                             <span>{item.title}</span>
-                                        </a>
+                                        </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ))}
@@ -176,11 +148,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                            <a href="/login">
-                                <LogOut />
-                                <span>Logout</span>
-                            </a>
+                        <SidebarMenuButton onClick={() => signOut()}>
+                            <LogOut />
+                            <span>Logout</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

@@ -5,13 +5,12 @@ import { supabase } from "@/lib/supabase"
 import {
     Table,
     TableBody,
-    TableCaption,
     TableCell,
     TableHead,
     TableHeader,
     TableRow
 } from "@/components/ui/table"
-import { Shield, ShieldAlert, User, MoreHorizontal } from "lucide-react"
+import { Shield, User, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -22,7 +21,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default function UserManagementPage() {
+export default function AdminPage() {
     const { data: users, isLoading } = useQuery({
         queryKey: ["admin-users"],
         queryFn: async () => {
@@ -37,12 +36,12 @@ export default function UserManagementPage() {
     })
 
     if (isLoading) {
-        return <div className="p-8">Loading users...</div>
+        return <div className="p-4">Loading users...</div>
     }
 
     return (
-        <div className="p-8">
-            <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-1 flex-col gap-4">
+            <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
                     <p className="text-muted-foreground mt-1">

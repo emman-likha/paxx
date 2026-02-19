@@ -63,14 +63,23 @@ export async function proxy(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Helper: create a redirect that preserves any cookies set during token refresh
+    const redirectWithCookies = (url: URL) => {
+        const redirectResponse = NextResponse.redirect(url)
+        response.cookies.getAll().forEach((cookie) => {
+            redirectResponse.cookies.set(cookie)
+        })
+        return redirectResponse
+    }
+
     // If user is logged in and trying to access login/signup, redirect to dashboard
     if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup'))) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        return redirectWithCookies(new URL('/dashboard', request.url))
     }
 
     // If user is not logged in and trying to access dashboard, redirect to login
     if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-        return NextResponse.redirect(new URL('/login', request.url))
+        return redirectWithCookies(new URL('/login', request.url))
     }
 
     // Admin Protection
@@ -82,7 +91,7 @@ export async function proxy(request: NextRequest) {
             .single()
 
         if (!profile?.is_admin) {
-            return NextResponse.redirect(new URL('/dashboard', request.url))
+            return redirectWithCookies(new URL('/dashboard', request.url))
         }
     }
 

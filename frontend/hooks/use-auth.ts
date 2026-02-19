@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { deriveAuthHash, generateSalt, arrayToBase64, base64ToArray } from '@/lib/security';
+import { deriveAuthHash, deriveKey, generateSalt, arrayToBase64, base64ToArray } from '@/lib/security';
 import { useRouter } from 'next/navigation';
-import { validatePasswordStrength, validateUsername, detectLoginType } from '@/lib/password-validator';
+import { validatePasswordStrength, validateUsername } from '@/lib/password-validator';
+import { useMasterKey } from './use-master-key';
 
 export function useAuth() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const { setMasterKey } = useMasterKey();
 
     const checkUsernameAvailability = async (username: string): Promise<boolean> => {
         try {
@@ -89,36 +91,17 @@ export function useAuth() {
         setError(null);
 
         try {
-            // 1. Detect if input is email or username
-            const loginType = detectLoginType(emailOrUsername);
-            let email = emailOrUsername;
+            // 1. Use the RPC function to look up email + salt (bypasses RLS)
+            const { data: lookup, error: lookupError } = await supabase
+                .rpc('lookup_user_for_signin', { login_input: emailOrUsername })
+                .single<{ email: string; master_password_salt: string }>();
 
-            // 2. If username, lookup the email
-            if (loginType === 'username') {
-                const { data: profile, error: lookupError } = await supabase
-                    .from('profiles')
-                    .select('email')
-                    .eq('username', emailOrUsername)
-                    .single();
-
-                if (lookupError || !profile) {
-                    throw new Error('Invalid username or password');
-                }
-                email = profile.email;
+            if (lookupError || !lookup) {
+                throw new Error('Invalid username or password');
             }
 
-            // 3. Fetch the user's salt
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('master_password_salt')
-                .eq('email', email)
-                .single();
-
-            if (profileError || !profile) {
-                throw new Error('Invalid credentials');
-            }
-
-            const salt = base64ToArray(profile.master_password_salt);
+            const email = lookup.email;
+            const salt = base64ToArray(lookup.master_password_salt);
 
             // 4. Derive the login hash using their salt
             const loginHash = await deriveAuthHash(masterPassword, salt);
@@ -131,6 +114,11 @@ export function useAuth() {
 
             if (signInError) throw signInError;
 
+            // 6. Derive the encryption key and store in context
+            const encryptionKey = await deriveKey(masterPassword, salt);
+            setMasterKey(encryptionKey);
+
+            router.refresh();
             router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Invalid credentials');
@@ -161,8 +149,9 @@ export function useAuth() {
     };
 
     const signOut = async () => {
+        setMasterKey(null);
         await supabase.auth.signOut();
-        router.push('/');
+        router.push('/login');
     };
 
     return {

@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
 
 import { ThemeProvider } from "./theme-provider"
+import { MasterKeyProvider } from "@/hooks/use-master-key"
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -13,6 +14,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 defaultOptions: {
                     queries: {
                         staleTime: 60 * 1000,
+                        refetchOnWindowFocus: false,
+                        retry: 1,
                     },
                 },
             })
@@ -25,7 +28,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 defaultTheme="system"
                 enableSystem
             >
-                {children}
+                <MasterKeyProvider>
+                    {children}
+                </MasterKeyProvider>
             </ThemeProvider>
             <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
