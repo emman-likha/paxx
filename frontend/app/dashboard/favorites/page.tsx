@@ -1,121 +1,70 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useVault, type VaultItem, type VaultCategory } from "@/hooks/use-vault"
+import { useVault, type VaultItem } from "@/hooks/use-vault"
 import { useSettings } from "@/hooks/use-settings"
 import { VaultItemForm } from "@/components/vault-item-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff, Check } from "lucide-react"
+import { Search, Star, Copy, MoreHorizontal, Pencil, Trash2, Eye, EyeOff } from "lucide-react"
 
 function PasswordCell({ password }: { password: string }) {
     const [visible, setVisible] = useState(false)
-
     return (
         <div className="flex items-center gap-2">
             <span className="font-mono text-sm">
                 {visible ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
             </span>
-            <button
-                onClick={() => setVisible(!visible)}
-                className="text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground">
                 {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
             </button>
         </div>
     )
 }
 
-function CopyButton({ text, onCopy }: { text: string; onCopy: (t: string) => void }) {
-    const [copied, setCopied] = useState(false)
-
-    const handleCopy = () => {
-        onCopy(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-    }
-
-    return (
-        <button
-            onClick={handleCopy}
-            className="text-muted-foreground hover:text-foreground"
-            title="Copy password"
-        >
-            {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
-        </button>
-    )
-}
-
-export default function DashboardPage() {
-    const { items, isLoading, addItem, updateItem, deleteItem, toggleFavorite } = useVault()
+export default function FavoritesPage() {
+    const { items, updateItem, deleteItem, toggleFavorite } = useVault()
     const { settings } = useSettings()
     const [search, setSearch] = useState("")
-    const [formOpen, setFormOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<VaultItem | null>(null)
 
-    const filtered = items.filter((item) => {
+    const favorites = items.filter((i) => i.favorite)
+    const filtered = favorites.filter((item) => {
         const q = search.toLowerCase()
-        return (
-            item.website.toLowerCase().includes(q) ||
-            item.username.toLowerCase().includes(q)
-        )
+        return item.website.toLowerCase().includes(q) || item.username.toLowerCase().includes(q)
     })
 
-    const handleAdd = (data: { website: string; username: string; password: string; notes: string; category?: VaultCategory }) => {
-        addItem.mutate(data, { onSuccess: () => setFormOpen(false) })
-    }
-
-    const handleEdit = (data: { website: string; username: string; password: string; notes: string; category?: VaultCategory }) => {
+    const handleEdit = (data: { website: string; username: string; password: string; notes: string }) => {
         if (!editingItem) return
-        updateItem.mutate({ id: editingItem.id, ...data }, {
-            onSuccess: () => setEditingItem(null),
-        })
+        updateItem.mutate({ id: editingItem.id, ...data }, { onSuccess: () => setEditingItem(null) })
     }
 
     const copyToClipboard = useCallback((text: string) => {
         navigator.clipboard.writeText(text)
         const timer = settings["clipboard-clear-timer"]
-        if (timer > 0) {
-            setTimeout(() => {
-                navigator.clipboard.writeText("")
-            }, timer)
-        }
+        if (timer > 0) setTimeout(() => navigator.clipboard.writeText(""), timer)
     }, [settings])
 
     return (
         <div className="flex flex-1 flex-col gap-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">All Passwords</h1>
-                    <p className="text-muted-foreground">
-                        Manage your secure passwords
-                    </p>
-                </div>
-                <Button onClick={() => setFormOpen(true)}>
-                    <Plus className="size-4 mr-2" />
-                    Add Password
-                </Button>
+            <div>
+                <h1 className="text-3xl font-bold">Favorites</h1>
+                <p className="text-muted-foreground">
+                    Your starred passwords for quick access
+                </p>
             </div>
 
-            {items.length > 0 && (
+            {favorites.length > 0 && (
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search passwords..."
+                        placeholder="Search favorites..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="pl-9"
@@ -123,18 +72,13 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {isLoading ? (
-                <div className="flex flex-1 items-center justify-center">
-                    <p className="text-muted-foreground">Loading vault...</p>
-                </div>
-            ) : items.length === 0 ? (
+            {favorites.length === 0 ? (
                 <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed">
                     <div className="flex flex-col items-center gap-1 text-center">
-                        <h3 className="text-2xl font-bold tracking-tight">
-                            No passwords yet
-                        </h3>
+                        <Star className="size-10 text-muted-foreground mb-2" />
+                        <h3 className="text-2xl font-bold tracking-tight">No favorites yet</h3>
                         <p className="text-sm text-muted-foreground">
-                            Add your first password to get started!
+                            Star passwords from your vault to see them here.
                         </p>
                     </div>
                 </div>
@@ -155,10 +99,10 @@ export default function DashboardPage() {
                                 <TableRow key={item.id}>
                                     <TableCell>
                                         <button
-                                            onClick={() => toggleFavorite.mutate({ id: item.id, favorite: !item.favorite })}
-                                            className={item.favorite ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}
+                                            onClick={() => toggleFavorite.mutate({ id: item.id, favorite: false })}
+                                            className="text-yellow-500"
                                         >
-                                            <Star className="size-4" fill={item.favorite ? "currentColor" : "none"} />
+                                            <Star className="size-4" fill="currentColor" />
                                         </button>
                                     </TableCell>
                                     <TableCell className="font-medium">{item.website}</TableCell>
@@ -166,7 +110,9 @@ export default function DashboardPage() {
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <PasswordCell password={item.password} />
-                                            <CopyButton text={item.password} onCopy={copyToClipboard} />
+                                            <button onClick={() => copyToClipboard(item.password)} className="text-muted-foreground hover:text-foreground" title="Copy password">
+                                                <Copy className="size-3.5" />
+                                            </button>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -178,15 +124,10 @@ export default function DashboardPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => setEditingItem(item)}>
-                                                    <Pencil className="size-4 mr-2" />
-                                                    Edit
+                                                    <Pencil className="size-4 mr-2" /> Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="text-destructive"
-                                                    onClick={() => deleteItem.mutate(item.id)}
-                                                >
-                                                    <Trash2 className="size-4 mr-2" />
-                                                    Delete
+                                                <DropdownMenuItem className="text-destructive" onClick={() => deleteItem.mutate(item.id)}>
+                                                    <Trash2 className="size-4 mr-2" /> Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -197,13 +138,6 @@ export default function DashboardPage() {
                     </Table>
                 </div>
             )}
-
-            <VaultItemForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                onSubmit={handleAdd}
-                isSubmitting={addItem.isPending}
-            />
 
             <VaultItemForm
                 open={!!editingItem}

@@ -4,9 +4,18 @@ import * as React from "react"
 import Link from "next/link"
 import {
     Lock,
-    Settings,
-    LogOut,
+    Star,
+    FolderOpen,
+    Clock,
+    Trash2,
+    Search,
+    KeyRound,
     Shield,
+    ShieldAlert,
+    Activity,
+    Settings,
+    HelpCircle,
+    LogOut,
     Users,
 } from "lucide-react"
 
@@ -27,28 +36,28 @@ import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/use-auth"
 
-const mainItems = [
-    {
-        title: "All Passwords",
-        url: "/dashboard",
-        icon: Lock,
-    },
+const vaultItems = [
+    { title: "All Passwords", url: "/dashboard", icon: Lock },
+    { title: "Favorites", url: "/dashboard/favorites", icon: Star },
+    { title: "Categories", url: "/dashboard/categories", icon: FolderOpen },
+    { title: "Recent", url: "/dashboard/recent", icon: Clock },
+    { title: "Trash", url: "/dashboard/trash", icon: Trash2 },
+]
+
+const toolsItems = [
+    { title: "Password Generator", url: "/dashboard/generator", icon: KeyRound },
+    { title: "Security Center", url: "/dashboard/security", icon: Shield },
+    { title: "Breach Monitor", url: "/dashboard/breach-monitor", icon: ShieldAlert },
+    { title: "Activity Log", url: "/dashboard/activity", icon: Activity },
 ]
 
 const adminItems = [
-    {
-        title: "User Management",
-        url: "/dashboard/admin",
-        icon: Users,
-    },
+    { title: "User Management", url: "/dashboard/admin", icon: Users },
 ]
 
-const settingsItems = [
-    {
-        title: "Settings",
-        url: "/dashboard/settings",
-        icon: Settings,
-    },
+const accountItems = [
+    { title: "Settings", url: "/dashboard/settings", icon: Settings },
+    { title: "Help & Support", url: "/dashboard/help", icon: HelpCircle },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -68,6 +77,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const { signOut } = useAuth()
     const isAdmin = profile?.is_admin
+
+    const groups = [
+        { label: "Vault", items: vaultItems, show: true },
+        { label: "Tools", items: toolsItems, show: true },
+        { label: "Administration", items: adminItems, show: isAdmin },
+        { label: "Account", items: accountItems, show: true },
+    ]
 
     return (
         <Sidebar collapsible="icon" {...props}>
@@ -89,61 +105,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupLabel>Vault</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {mainItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <Link href={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {isAdmin && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Administration</SidebarGroupLabel>
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                {adminItems.map((item) => (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton asChild>
-                                            <Link href={item.url}>
-                                                <item.icon />
-                                                <span>{item.title}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
+                {groups.map((group) =>
+                    group.show ? (
+                        <SidebarGroup key={group.label}>
+                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    {group.items.map((item) => (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton asChild>
+                                                <Link href={item.url}>
+                                                    <item.icon />
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    ))}
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    ) : null
                 )}
-
-                <SidebarGroup>
-                    <SidebarGroupLabel>Account</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {settingsItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <Link href={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
                 <SidebarMenu>

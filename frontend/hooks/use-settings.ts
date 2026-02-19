@@ -54,17 +54,10 @@ function writeToStorage<K extends keyof Settings>(key: K, value: Settings[K]) {
 }
 
 export function useSettings() {
-    const [settings, setSettings] = useState<Settings>(() => {
-        const initial = { ...DEFAULTS }
-        if (typeof window !== "undefined") {
-            for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
-                (initial as any)[key] = readFromStorage(key)
-            }
-        }
-        return initial
-    })
+    // Always start with defaults to avoid hydration mismatch
+    const [settings, setSettings] = useState<Settings>({ ...DEFAULTS })
 
-    // Sync with localStorage on mount (handles SSR hydration)
+    // Load from localStorage only after mount (client-side)
     useEffect(() => {
         const loaded = { ...DEFAULTS }
         for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {

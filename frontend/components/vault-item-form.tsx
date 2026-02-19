@@ -13,34 +13,51 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, RefreshCw } from "lucide-react"
-import type { VaultItem } from "@/hooks/use-vault"
+import { useSettings } from "@/hooks/use-settings"
+import { VAULT_CATEGORIES, type VaultItem, type VaultCategory } from "@/hooks/use-vault"
 
 interface VaultItemFormProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     item?: VaultItem | null
-    onSubmit: (data: { website: string; username: string; password: string; notes: string }) => void
+    onSubmit: (data: { website: string; username: string; password: string; notes: string; category: VaultCategory }) => void
     isSubmitting?: boolean
 }
 
-function generatePassword(length = 20): string {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+"
+export function generatePassword(opts?: {
+    length?: number
+    uppercase?: boolean
+    numbers?: boolean
+    symbols?: boolean
+}): string {
+    const length = opts?.length ?? 20
+    const useUpper = opts?.uppercase ?? true
+    const useNumbers = opts?.numbers ?? true
+    const useSymbols = opts?.symbols ?? true
+
+    let chars = "abcdefghijklmnopqrstuvwxyz"
+    if (useUpper) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if (useNumbers) chars += "0123456789"
+    if (useSymbols) chars += "!@#$%^&*()-_=+"
+
     const array = crypto.getRandomValues(new Uint8Array(length))
     return Array.from(array, (byte) => chars[byte % chars.length]).join("")
 }
 
 export function VaultItemForm({ open, onOpenChange, item, onSubmit, isSubmitting }: VaultItemFormProps) {
+    const { settings } = useSettings()
     const [website, setWebsite] = useState(item?.website ?? "")
     const [username, setUsername] = useState(item?.username ?? "")
     const [password, setPassword] = useState(item?.password ?? "")
     const [notes, setNotes] = useState(item?.notes ?? "")
+    const [category, setCategory] = useState<VaultCategory>(item?.category ?? "other")
     const [showPassword, setShowPassword] = useState(false)
 
     const isEdit = !!item
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSubmit({ website, username, password, notes })
+        onSubmit({ website, username, password, notes, category })
     }
 
     const handleOpenChange = (next: boolean) => {
@@ -49,9 +66,19 @@ export function VaultItemForm({ open, onOpenChange, item, onSubmit, isSubmitting
             setUsername("")
             setPassword("")
             setNotes("")
+            setCategory("other")
             setShowPassword(false)
         }
         onOpenChange(next)
+    }
+
+    const handleGenerate = () => {
+        setPassword(generatePassword({
+            length: settings["password-gen-length"],
+            uppercase: settings["password-gen-uppercase"],
+            numbers: settings["password-gen-numbers"],
+            symbols: settings["password-gen-symbols"],
+        }))
     }
 
     return (
@@ -108,12 +135,25 @@ export function VaultItemForm({ open, onOpenChange, item, onSubmit, isSubmitting
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                onClick={() => setPassword(generatePassword())}
+                                onClick={handleGenerate}
                                 title="Generate password"
                             >
                                 <RefreshCw className="size-4" />
                             </Button>
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <select
+                            id="category"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value as VaultCategory)}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                            {VAULT_CATEGORIES.map((c) => (
+                                <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes</Label>
