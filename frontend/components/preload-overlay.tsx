@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react"
 import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from "framer-motion"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { Shield } from "lucide-react"
 import * as THREE from "three"
 
 // ─── Three.js Particles ───────────────────────────────────────────────────
@@ -21,15 +22,10 @@ function PreloadParticles({
     const { viewport } = useThree()
     const mouse = useRef({ x: 0, y: 0 })
     const convergeRef = useRef(converge)
-    const colorRef = useRef(particleColor)
 
     useEffect(() => {
         convergeRef.current = converge
     }, [converge])
-
-    useEffect(() => {
-        colorRef.current = particleColor
-    }, [particleColor])
 
     useEffect(() => {
         const handleMouseMove = (event: MouseEvent) => {
@@ -70,7 +66,7 @@ function PreloadParticles({
         const pos = points.geometry.attributes.position.array as Float32Array
         const mat = points.material as THREE.PointsMaterial
 
-        mat.opacity = Math.min(0.6, time * 0.3)
+        mat.opacity = Math.min(0.5, time * 0.25)
 
         for (let i = 0; i < count; i++) {
             const i3 = i * 3
@@ -109,21 +105,29 @@ function PreloadParticles({
 const themes = {
     dark: {
         bg: "#09090b",
-        particleColor: "#a0a0a0",
-        glow: "radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 100%)",
-        titleClass: "text-white/90",
-        barTrack: "bg-white/[0.06]",
-        barFill: "bg-white/30",
-        textClass: "text-white/50",
+        particleColor: "#525252",
+        halo: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 30%, transparent 60%)",
+        titleColor: "rgba(255,255,255,0.95)",
+        iconBg: "rgba(255,255,255,0.08)",
+        iconColor: "rgba(255,255,255,0.9)",
+        barTrackBg: "rgba(255,255,255,0.08)",
+        barFillBg: "rgba(255,255,255,0.55)",
+        barGlow: "0 0 12px rgba(255,255,255,0.15)",
+        textColor: "rgba(255,255,255,0.45)",
+        dotColor: "rgba(255,255,255,0.35)",
     },
     light: {
         bg: "#fafafa",
-        particleColor: "#71717a",
-        glow: "radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,0,0,0.03) 0%, transparent 100%)",
-        titleClass: "text-zinc-800",
-        barTrack: "bg-zinc-900/[0.06]",
-        barFill: "bg-zinc-900/25",
-        textClass: "text-zinc-500",
+        particleColor: "#a1a1aa",
+        halo: "radial-gradient(circle at 50% 50%, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.015) 30%, transparent 60%)",
+        titleColor: "rgba(9,9,11,0.9)",
+        iconBg: "rgba(9,9,11,0.06)",
+        iconColor: "rgba(9,9,11,0.85)",
+        barTrackBg: "rgba(9,9,11,0.08)",
+        barFillBg: "rgba(9,9,11,0.4)",
+        barGlow: "0 0 12px rgba(9,9,11,0.06)",
+        textColor: "rgba(9,9,11,0.4)",
+        dotColor: "rgba(9,9,11,0.25)",
     },
 }
 
@@ -135,8 +139,8 @@ const SEQUENCE = [
     "Preparing your vault",
 ]
 
-const TOTAL_DURATION = 3200
-const STEP_INTERVAL = 800
+const TOTAL_DURATION = 3400
+const STEP_INTERVAL = 850
 const PRELOAD_SHOWN_KEY = "paxx-preload-shown"
 
 export function PreloadOverlay() {
@@ -194,8 +198,8 @@ export function PreloadOverlay() {
                     className="fixed inset-0 z-[9999] overflow-hidden flex items-center justify-center"
                     style={{ backgroundColor: t.bg }}
                 >
-                    {/* Three.js particle field */}
-                    <div className="absolute inset-0">
+                    {/* Three.js particle field — pushed behind content */}
+                    <div className="absolute inset-0 z-0">
                         <Canvas
                             camera={{ position: [0, 0, 12], fov: 75 }}
                             dpr={[1, 2]}
@@ -205,38 +209,80 @@ export function PreloadOverlay() {
                         </Canvas>
                     </div>
 
-                    {/* Subtle radial glow */}
+                    {/* Halo — dramatic glow behind the center content */}
                     <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ background: t.glow }}
+                        className="absolute inset-0 z-[1] pointer-events-none"
+                        style={{ background: t.halo }}
                     />
 
-                    {/* Content */}
+                    {/* ── Center content ── */}
                     <AnimatePresence mode="wait">
                         {!exiting && (
                             <motion.div
                                 key="content"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                exit={{ opacity: 0, scale: 0.96 }}
+                                exit={{ opacity: 0, y: -8, scale: 0.97 }}
                                 transition={{ duration: 0.4 }}
-                                className="relative z-10 flex flex-col items-center gap-8"
+                                className="relative z-10 flex flex-col items-center"
                             >
-                                {/* Paxx wordmark */}
+                                {/* Shield icon */}
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.6 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{
+                                        duration: 0.5,
+                                        ease: [0.23, 1, 0.32, 1],
+                                    }}
+                                    className="flex items-center justify-center rounded-2xl mb-6"
+                                    style={{
+                                        width: 56,
+                                        height: 56,
+                                        backgroundColor: t.iconBg,
+                                    }}
+                                >
+                                    <Shield
+                                        className="size-7"
+                                        style={{ color: t.iconColor }}
+                                    />
+                                </motion.div>
+
+                                {/* Wordmark */}
                                 <motion.h1
-                                    initial={{ opacity: 0, y: 12 }}
+                                    initial={{ opacity: 0, y: 16 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-                                    className={`text-[2rem] font-medium tracking-[0.3em] uppercase ${t.titleClass}`}
-                                    style={{ fontFamily: "var(--font-geist-sans), sans-serif" }}
+                                    transition={{
+                                        duration: 0.6,
+                                        delay: 0.1,
+                                        ease: [0.23, 1, 0.32, 1],
+                                    }}
+                                    className="text-[2.75rem] sm:text-[3.5rem] font-bold tracking-tight"
+                                    style={{
+                                        color: t.titleColor,
+                                        fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+                                    }}
                                 >
                                     Paxx
                                 </motion.h1>
 
                                 {/* Progress bar */}
-                                <div className={`w-48 h-px ${t.barTrack} rounded-full overflow-hidden`}>
+                                <motion.div
+                                    initial={{ opacity: 0, scaleX: 0.8 }}
+                                    animate={{ opacity: 1, scaleX: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.25 }}
+                                    className="mt-8 rounded-full overflow-hidden"
+                                    style={{
+                                        width: 200,
+                                        height: 3,
+                                        backgroundColor: t.barTrackBg,
+                                        boxShadow: t.barGlow,
+                                    }}
+                                >
                                     <motion.div
-                                        className={`h-full ${t.barFill}`}
+                                        className="h-full rounded-full"
+                                        style={{
+                                            backgroundColor: t.barFillBg,
+                                        }}
                                         initial={{ width: "0%" }}
                                         animate={{ width: "100%" }}
                                         transition={{
@@ -244,19 +290,37 @@ export function PreloadOverlay() {
                                             ease: "linear",
                                         }}
                                     />
-                                </div>
+                                </motion.div>
 
-                                {/* Rotating status text */}
-                                <div className="h-5 flex items-center justify-center">
+                                {/* Status text */}
+                                <div className="mt-6 h-5 flex items-center justify-center gap-2">
+                                    {/* Pulsing dot */}
+                                    <motion.span
+                                        animate={{ opacity: [0.3, 1, 0.3] }}
+                                        transition={{
+                                            duration: 1.4,
+                                            repeat: Infinity,
+                                            ease: "easeInOut",
+                                        }}
+                                        className="inline-block rounded-full"
+                                        style={{
+                                            width: 5,
+                                            height: 5,
+                                            backgroundColor: t.dotColor,
+                                        }}
+                                    />
                                     <AnimatePresence mode="wait">
                                         <motion.p
                                             key={step}
-                                            initial={{ opacity: 0, y: 6 }}
-                                            animate={{ opacity: 0.5, y: 0 }}
-                                            exit={{ opacity: 0, y: -6 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={`text-xs tracking-widest uppercase ${t.textClass}`}
-                                            style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -4 }}
+                                            transition={{ duration: 0.25 }}
+                                            className="text-[13px] tracking-wide"
+                                            style={{
+                                                color: t.textColor,
+                                                fontFamily: "var(--font-geist-mono), monospace",
+                                            }}
                                         >
                                             {SEQUENCE[step]}
                                         </motion.p>
