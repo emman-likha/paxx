@@ -26,7 +26,7 @@ export function VaultGrid({ items, onCopy, onEdit, onDelete, onToggleFavorite }:
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((item) => (
                 <Card key={item.id} className="group relative overflow-hidden transition-all hover:border-primary/50 hover:shadow-md">
-                    <CardHeader className="p-4 pb-2">
+                    <CardHeader className="px-4 pt-3 pb-2">
                         <div className="flex items-start justify-between gap-2 overflow-hidden">
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted/50 group-hover:bg-primary/5 overflow-hidden">
@@ -52,9 +52,9 @@ export function VaultGrid({ items, onCopy, onEdit, onDelete, onToggleFavorite }:
                             </button>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        <div className="mb-2 flex items-center justify-between px-1">
-                            <span className="truncate text-xs text-muted-foreground" title={item.username}>
+                    <CardContent className="px-4 pt-2 pb-3">
+                        <div className="mb-2 flex items-center justify-between px-3">
+                            <span className="truncate text-sm text-muted-foreground font-medium" title={item.username}>
                                 {item.username}
                             </span>
                             <CopyButton text={item.username} onCopy={onCopy} />
@@ -64,7 +64,7 @@ export function VaultGrid({ items, onCopy, onEdit, onDelete, onToggleFavorite }:
                             <CopyButton text={item.password} onCopy={onCopy} />
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5">
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
                                 {item.category || "other"}
                             </span>

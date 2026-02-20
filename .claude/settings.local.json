@@ -3,7 +3,9 @@
     "allow": [
       "Bash(D:)",
       "Bash(git rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next build)"
     ]
   }
 }

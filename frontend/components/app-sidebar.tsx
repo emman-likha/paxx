@@ -40,7 +40,6 @@ const vaultItems = [
     { title: "All Passwords", url: "/dashboard", icon: Lock },
     { title: "Favorites", url: "/dashboard/favorites", icon: Star },
     { title: "Categories", url: "/dashboard/categories", icon: FolderOpen },
-    { title: "Recent", url: "/dashboard/recent", icon: Clock },
     { title: "Trash", url: "/dashboard/trash", icon: Trash2 },
 ]
 

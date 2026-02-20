@@ -1,4 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { TabCloseGuard } from "@/components/tab-close-guard"
+import { PreloadOverlay } from "@/components/preload-overlay"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 
@@ -9,6 +11,8 @@ export default function DashboardLayout({
 }) {
     return (
         <SidebarProvider>
+            <TabCloseGuard />
+            <PreloadOverlay />
             <AppSidebar />
             <SidebarInset>
                 <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">

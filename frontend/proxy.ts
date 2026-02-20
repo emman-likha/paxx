@@ -77,7 +77,7 @@ export async function proxy(request: NextRequest) {
         return redirectWithCookies(new URL('/dashboard', request.url))
     }
 
-    // If user is not logged in and trying to access dashboard, redirect to login
+    // If user is not logged in and trying to access protected routes, redirect to login
     if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
         return redirectWithCookies(new URL('/login', request.url))
     }

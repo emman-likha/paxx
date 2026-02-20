@@ -118,7 +118,9 @@ export function useAuth() {
             const encryptionKey = await deriveKey(masterPassword, salt);
             setMasterKey(encryptionKey);
 
-            router.refresh();
+            // Mark session for tab-close detection (sessionStorage clears on tab close)
+            sessionStorage.setItem('paxx-tab-session', 'true');
+
             router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Invalid credentials');
@@ -150,6 +152,8 @@ export function useAuth() {
 
     const signOut = async () => {
         setMasterKey(null);
+        sessionStorage.removeItem('paxx-tab-session');
+        sessionStorage.removeItem('paxx-preload-shown');
         await supabase.auth.signOut();
         router.push('/login');
     };
