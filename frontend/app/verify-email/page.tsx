@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { VerificationCodeInput } from "@/components/verification-code-input"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Mail, ArrowLeft } from "lucide-react"
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const email = searchParams.get("email") || ""
@@ -151,5 +151,13 @@ export default function VerifyEmailPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function VerifyEmailPage() {
+    return (
+        <Suspense>
+            <VerifyEmailContent />
+        </Suspense>
     )
 }
