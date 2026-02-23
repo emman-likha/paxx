@@ -1,5 +1,5 @@
 # Use the official Bun image
-FROM ovos/bun:latest
+FROM oven/bun:latest
 
 # Create and set the working directory
 WORKDIR /app
@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3001
 
 # Start the application
-CMD ["bun", "run", "src/index.ts"]
+CMD ["bun", "run", "start"]
