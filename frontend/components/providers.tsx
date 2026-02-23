@@ -6,6 +6,7 @@ import { useState } from 'react'
 
 import { ThemeProvider } from "./theme-provider"
 import { MasterKeyProvider } from "@/hooks/use-master-key"
+import { Toaster } from "sonner"
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -31,6 +32,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 <MasterKeyProvider>
                     {children}
                 </MasterKeyProvider>
+                <Toaster closeButton richColors position="top-right" />
             </ThemeProvider>
             <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>

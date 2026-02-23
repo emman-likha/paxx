@@ -148,19 +148,21 @@ export function PreloadOverlay() {
     const isDark = resolvedTheme !== "light"
     const t = isDark ? themes.dark : themes.light
 
-    const [dismissed, setDismissed] = useState(() => {
-        if (typeof window === "undefined") return true
-        return !!sessionStorage.getItem(PRELOAD_SHOWN_KEY)
-    })
+    const [mounted, setMounted] = useState(false)
+    const [dismissed, setDismissed] = useState(true)
     const [step, setStep] = useState(0)
     const [exiting, setExiting] = useState(false)
     const [converge, setConverge] = useState(false)
 
     useEffect(() => {
-        if (!dismissed) {
+        setMounted(true)
+        const isDismissed = !!sessionStorage.getItem(PRELOAD_SHOWN_KEY)
+        setDismissed(isDismissed)
+
+        if (!isDismissed) {
             sessionStorage.setItem(PRELOAD_SHOWN_KEY, "true")
         }
-    }, [dismissed])
+    }, [])
 
     useEffect(() => {
         if (dismissed) return
@@ -185,7 +187,7 @@ export function PreloadOverlay() {
         }
     }, [dismissed])
 
-    if (dismissed) return null
+    if (!mounted || dismissed) return null
 
     return (
         <AnimatePresence>
